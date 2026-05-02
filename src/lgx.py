@@ -46,6 +46,11 @@ class LGX:
         self.__total_extracted_pred += self.__extracted_preds
         return self
     
+    def infer_step(self, prompt:str, image_step_path:str) -> "LGX":
+        self.__extracted_preds = self.evaluator.run_image(prompt, image_step_path)
+        self.__total_extracted_pred += self.__extracted_preds
+        return self
+    
     def run_asp(self) -> "LGX":
         self.__result_preds = self.extracted_preds
         if self.__application_config['knowledge_base'] and self.__total_extracted_pred != "":

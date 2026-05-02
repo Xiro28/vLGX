@@ -83,12 +83,13 @@ class Predicate:
         self.formatted_predicate = json.dumps(self.grammar.__info__)
             
         # Check if the prompt needs string replacements
-        replacements = {k: v for d in strings for k, v in d.items()}
-        prompt_tokens = re.findall(r"\{([A-Za-z0-9\_]+)\}", self._prompt)
-        
-        for token in prompt_tokens:
-            if token in replacements:
-                self._prompt = self._prompt.replace(f"{{{token}}}", str(replacements[token]))
+        if strings:
+            replacements = {k: v for d in strings for k, v in d.items()}
+            prompt_tokens = re.findall(r"\{([A-Za-z0-9\_]+)\}", self._prompt)
+            
+            for token in prompt_tokens:
+                if token in replacements:
+                    self._prompt = self._prompt.replace(f"{{{token}}}", str(replacements[token]))
 
         # Check wheter a condition is simple (a(1), b(2), ...) or complex (condition_1 :- a(1), condition_2(3) ... condition_3 :- ...)
         # If try goes through the except it means that the condition is complex

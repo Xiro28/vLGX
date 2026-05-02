@@ -1,0 +1,25 @@
+context: null
+
+strings: null
+    
+extract:
+
+- steps(number_of_steps): 
+    prompt: |
+        For the given image, extract the total number of steps listed inside the page.
+    knowledge_base: |
+        step(1..N) :- steps(N).
+        #show step/1.
+
+- step_description(step, description): 
+    prompt: |
+        For the given step, extract a short description of the action being performed. 
+        The description should be a concise summary of the action, without including any additional details or context.
+    extraction_condition:
+        - condition: steps(_)
+          monotone: true
+    knowledge_base: |
+        #show step_description/2.
+
+
+knowledge_base: null

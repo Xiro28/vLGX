@@ -1,18 +1,16 @@
-from src.lgx import lgx
+from src.lgx import LGX
 
 if __name__ == "__main__":
 
-    lgx_instance = lgx.create(
-        "llama3.1b",
-        "benchmark/behaviours/behaviour_v3.yml",
-        "benchmark/applications/ALL/lgx.yml"
+    lgx_instance = LGX(
+        "behaviour/behaviour.lgx.yml",
+        "applications/lgx.yml",
+        "ahmadwaqar/smolvlm2-256m-video:fp16"
     )
 
-    # load the database.json file and iterate over the questions, calling lgx_instance.infer for each question
-    with open("dataset.json", "r") as f:
-        import json
-        data = json.load(f)
-        for item in data:
-            prompt = item.get("text")
-            result = lgx_instance.infer(prompt).get_extracted_atoms()
-            print(f"Prompt: {prompt}\nResult: {result}\n{'-'*50}\n")
+    previous_step = "This will be the first step. Extract the description of the action being performed in this step."
+    #for item in range():
+    prompt = previous_step
+    result = lgx_instance.infer_step(prompt, "./test_3.jpg").inferred_preds
+    print(result)
+

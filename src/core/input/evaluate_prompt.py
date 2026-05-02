@@ -51,8 +51,9 @@ class EvaluatePrompt:
         return " ".join(re.findall(r"\w+(?:\([a-zA-Z0-9_]+(?:,\s*[a-zA-Z0-9_]+)*\))?\.", req))
     
 
-    def __structured_output_call(self, input_text: str) -> tuple: # type: ignore
+    def __structured_output_call(self, input_text: str, image_path: str = "") -> tuple: # type: ignore
         context = self.application_config.get("context", "")
+        image_appl = self.application_config.get("image", "")
 
         behaviour_context = ""
         behaviour_mapping = self.behaviour_config["mapping"].replace("{input}", input_text)
@@ -68,7 +69,10 @@ class EvaluatePrompt:
             appl_mapping = behaviour_mapping.replace("{instructions}", f"{predicate.prompt_description}")
             appl_mapping = appl_mapping.replace("{atom}", predicate.predicate_formatted)
 
-            yield self.__llm_instance.invoke_llm_constrained(appl_mapping, predicate.get_grammar(), behaviour_context), predicate
+            if image_appl != "" and image_path != "":
+                yield self.__llm_instance.invoke_llm_constrained_image(appl_mapping, predicate.get_grammar(), behaviour_context, image_path), predicate
+            else:
+                yield self.__llm_instance.invoke_llm_constrained(appl_mapping, predicate.get_grammar(), behaviour_context), predicate
 
         return (None, None)
 
@@ -90,8 +94,33 @@ class EvaluatePrompt:
                     PredicateContainer.add_predicate(atom)
 
         return PredicateContainer.get_all_predicates()
+    
+    def __extract_image_predicates_multi_call_grammar(self, input_text: str, image_step_path:str) -> str:
 
-    def run(self, input_text:str, grammar_type:str) -> None:
+        for response, predicate in self.__structured_output_call(input_text, image_step_path):
+
+            if response is None and predicate is None:
+                continue
+
+            atom_list = predicate.parse_response(response)
+
+            if atom_list:
+                extracted_facts = self.__filter_asp_atoms__(" ".join(atom_list))
+
+                execute_kb = predicate.run_kb(extracted_facts)
+
+                for atom in execute_kb.replace(", ", ",").split(" "):
+                    PredicateContainer.add_predicate(atom)
+
+        return PredicateContainer.get_all_predicates()
+    
+
+    def run(self, input_text:str, _:str) -> None:
         response = self.__extract_predicates_multi_call_grammar(input_text)
+        PredicateContainer.reset_container()
+        return response
+    
+    def run_image(self, input_text:str, image_path:str) -> None:
+        response = self.__extract_image_predicates_multi_call_grammar(input_text, image_path)
         PredicateContainer.reset_container()
         return response
