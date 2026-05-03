@@ -4,19 +4,24 @@ strings: null
     
 extract:
 
-- steps(number_of_steps): 
+- step(number): 
     prompt: |
-        For the given image, extract the total number of steps listed inside the page.
+        Extract the steps (specified as a number) shown inside the page.
     knowledge_base: |
-        step(1..N) :- steps(N).
         #show step/1.
+
+- main_action(step, action):
+    prompt: |
+        Extract the main action (which includes the parts with a label) that has to done.
+    knowledge_base: |
+        #show main_action/2.
 
 - step_description(step, description): 
     prompt: |
-        For the given step, extract a short description of the action being performed. 
-        The description should be a concise summary of the action, without including any additional details or context.
+        Describe shortly the action being performed as an enumered list of action. 
+        The description must include also the main action.
     extraction_condition:
-        - condition: steps(_)
+        - condition: step(_)
           monotone: true
     knowledge_base: |
         #show step_description/2.

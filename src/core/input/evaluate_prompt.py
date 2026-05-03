@@ -53,7 +53,6 @@ class EvaluatePrompt:
 
     def __structured_output_call(self, input_text: str, image_path: str = "") -> tuple: # type: ignore
         context = self.application_config.get("context", "")
-        image_appl = self.application_config.get("image", "")
 
         behaviour_context = ""
         behaviour_mapping = self.behaviour_config["mapping"].replace("{input}", input_text)
@@ -69,7 +68,7 @@ class EvaluatePrompt:
             appl_mapping = behaviour_mapping.replace("{instructions}", f"{predicate.prompt_description}")
             appl_mapping = appl_mapping.replace("{atom}", predicate.predicate_formatted)
 
-            if image_appl != "" and image_path != "":
+            if image_path != "":
                 yield self.__llm_instance.invoke_llm_constrained_image(appl_mapping, predicate.get_grammar(), behaviour_context, image_path), predicate
             else:
                 yield self.__llm_instance.invoke_llm_constrained(appl_mapping, predicate.get_grammar(), behaviour_context), predicate

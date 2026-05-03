@@ -5,10 +5,10 @@ if __name__ == "__main__":
     lgx_instance = LGX(
         "behaviour/behaviour.lgx.yml",
         "applications/lgx.yml",
-        "ahmadwaqar/smolvlm2-256m-video:fp16"
+        "gemma4:e2b"
     )
 
-    previous_step = "This will be the first step. Extract the description of the action being performed in this step."
+    previous_step = "Describe the actions being performed in this image."
     #for item in range():
     prompt = previous_step
     result = lgx_instance.infer_step(prompt, "./test_3.jpg").inferred_preds

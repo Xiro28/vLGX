@@ -3,6 +3,8 @@ import ollama
 import sqlite3
 import os
 
+import base64
+
 from src.utils.statistics   import Statistics
 
 class LLMHandler:
@@ -72,7 +74,13 @@ class LLMHandler:
         return {"role": role, "content": text}
     
     def __to__llm_dict_image__(self, role: str, text: str, image_path: str) -> dict:
-        return {"role": role, "content": text, "images": [image_path]}
+        with open(image_path, "rb") as f:
+            image_data = base64.b64encode(f.read()).decode("utf-8")
+        return {
+            "role": role,
+            "content": text,
+            "images": [image_data]  # base64 string, not a path
+        }
     
     def invoke_llm_constrained(self, prompt: str, class_response: any, context: any) -> dict | str:
         configuration = {'temperature': 0, "top_p": 0.1}
@@ -142,7 +150,7 @@ class LLMHandler:
             logging.error("Errore durante l'inferenza", exc_info=True)
             return None
 
-def invoke_llm_constrained_image(self, prompt: str, class_response: any, context: any, image_path: str) -> dict | str:
+    def invoke_llm_constrained_image(self, prompt: str, class_response: any, context: any, image_path: str) -> dict | str:
         configuration = {'temperature': 0, "top_p": 0.1}
         grammar = class_response
 
@@ -184,23 +192,25 @@ def invoke_llm_constrained_image(self, prompt: str, class_response: any, context
         _ret = self.__llm(
             model=self.llm_model,
             messages=_messages,
-            format = grammar,
+            format=grammar,
             stream=False,
             options=configuration
         )
 
-        token_out = _ret["eval_count"]
-        token_in = _ret["prompt_eval_count"]
-        extraction_time = _ret["total_duration"]
+        # token_out = _ret["eval_count"]
+        # token_in = _ret["prompt_eval_count"]
+        # extraction_time = _ret["total_duration"]
 
         _ret = _ret["message"]["content"]
+
+        print(_ret)
   
         try:
-            self.cursor.execute('INSERT INTO prompt_cache (prompt, llm_model, configuration, response, token_in, token_out, extraction_time) VALUES (?, ?, ?, ?, ?, ?, ?)', (str(_messages), self.llm_model, str(configuration), _ret, token_in, token_out, extraction_time ))
-            self.conn.commit()
+            # self.cursor.execute('INSERT INTO prompt_cache (prompt, llm_model, configuration, response, token_in, token_out, extraction_time) VALUES (?, ?, ?, ?, ?, ?, ?)', (str(_messages), self.llm_model, str(configuration), _ret, token_in, token_out, extraction_time ))
+            # self.conn.commit()
 
-            Statistics.log_llm_call(token_in, token_out)
-            Statistics.log_llm_call_duration(extraction_time)
+            # Statistics.log_llm_call(token_in, token_out)
+            # Statistics.log_llm_call_duration(extraction_time)
 
             if type(class_response) != str:
                 return class_response.model_validate_json(_ret)
