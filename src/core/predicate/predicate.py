@@ -68,19 +68,27 @@ class Predicate:
             self.predicate_group = predicate_definition["predicates"]   
             self.defined_predicate = " ".join(self.predicate_group)
 
+            self.has_predicate_link = False
+
             self.grammar = JSONSchemaBuilder().generate_single_grammar(self.predicate_group)
         else:
             self.is_predicate_group = False
             self.defined_predicate = next(iter(predicate_definition))
+            self.has_predicate_link = "#" in self.defined_predicate
             predicate_definition = predicate_definition[self.defined_predicate]
+
+            if self.has_predicate_link:
+                 logging.info("Predicate link detected for predicate. Grammar will be lazy updated before each LLM call", self.defined_predicate)
+
             self.grammar = JSONSchemaBuilder().generate(self.defined_predicate)
-        
+
 
         self.advanced_prompt_type = "extraction_condition" in predicate_definition or "knowledge_base" in predicate_definition
 
         self.init_predicate(predicate_definition)
 
         self.formatted_predicate = json.dumps(self.grammar.__info__)
+        self.contains_mustache = "{{{" in self._prompt and "}}}" in self._prompt
             
         # Check if the prompt needs string replacements
         if strings:
@@ -186,6 +194,8 @@ class Predicate:
         return extracted_facts
     
     def get_grammar(self) -> type:
+        if self.has_predicate_link:
+            self.grammar = JSONSchemaBuilder().generate(self.defined_predicate)
         return self.grammar
     
     def parse_response(self, response) -> list[str]:
@@ -193,6 +203,12 @@ class Predicate:
 
     @property
     def prompt_description(self):
+        if self.contains_mustache:
+            #get the predicate inside the mustache and replace it with the value of the predicate
+                predicate_name = re.findall(r"\{{3}([A-Za-z0-9\_]+)\}{3}", self._prompt)[0]
+                predicate_value = PredicateContainer.get_predicate_value(predicate_name)
+                print(f"Replacing mustache in prompt for predicate '{self.defined_predicate}': {{{{{predicate_name}}}}} -> {predicate_value}")
+                return self._prompt.replace(f"{{{{{predicate_name}}}}}", *predicate_value)
         return self._prompt
 
     @property

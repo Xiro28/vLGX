@@ -9,22 +9,32 @@ extract:
         Extract the steps (specified as a number) shown inside the page.
     knowledge_base: |
         #show step/1.
+    cardinality: n
 
-- main_action(step, action):
+- main_action(#step, action):
     prompt: |
-        Extract the main action (which includes the parts with a label) that has to done.
+        Shortly describe the main action (which includes the parts with a label) that has to done at the step {{{step}}}.
     knowledge_base: |
         #show main_action/2.
+    cardinality: 1
 
-- step_description(step, description): 
+- step_description(#step, description): 
     prompt: |
-        Describe shortly the action being performed as an enumered list of action. 
-        The description must include also the main action.
-    extraction_condition:
-        - condition: step(_)
-          monotone: true
+        Describe the main action """{{{main_action}}}""" being performed at the step {{{step}}}.
+        Include also insight of the step, such as the purpose of the step, the expected outcome, and any important details that should be noted.
     knowledge_base: |
         #show step_description/2.
+    cardinality: 1
 
 
-knowledge_base: null
+knowledge_base: |
+    % Show only the step descriptions for the steps that are present in the page.
+    
+    step_description(Step, Description) :-
+    step(Step),
+    step_description(Step, Description).
+
+    #show step_description/2.
+
+
+outcome: null

@@ -1,5 +1,6 @@
+from src.core.predicate.predicate_container import PredicateContainer
 from pydantic import BaseModel, Field
-from typing import List, Optional, Union, get_origin, get_args
+from typing import List, Literal, Optional, Union, get_origin, get_args
 import json
 
 class JSONSchemaBuilder:
@@ -24,9 +25,17 @@ class JSONSchemaBuilder:
         annotations = {}
 
         # 2. Build Pydantic fields and annotations
-        for term in terms:
-            class_dict[term] = Field(default=None) # Default None handles missing values
-            annotations[term] = Union[int, str, None]
+        for i, term in enumerate(terms):
+
+            if "#" in term:
+                terms[i] = term.split("#")[1] # Update term to remove type hint for now
+                annotations[terms[i]] = Literal[*PredicateContainer.get_predicate_value(terms[i])]
+                class_dict[terms[i]] = Field(default=None) # Default None handles missing values
+
+                print(f"Term '{term}' has type hint. Using Literal with value from PredicateContainer: {annotations[terms[i]]}")
+            else:
+                annotations[term] = Union[int, str, None]
+                class_dict[term] = Field(default=None) # Default None handles missing values
 
         # 3. Method to convert object to ASP fact string: predicate(val1, val2).
         def str_method(self):

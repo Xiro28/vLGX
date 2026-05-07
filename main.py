@@ -13,4 +13,3 @@ if __name__ == "__main__":
     prompt = previous_step
     result = lgx_instance.infer_step(prompt, "./test_3.jpg").inferred_preds
     print(result)
-
