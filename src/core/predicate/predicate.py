@@ -205,10 +205,18 @@ class Predicate:
     def prompt_description(self):
         if self.contains_mustache:
             #get the predicate inside the mustache and replace it with the value of the predicate
-                predicate_name = re.findall(r"\{{3}([A-Za-z0-9\_]+)\}{3}", self._prompt)[0]
+            mustaches = re.findall(r"\{{3}([A-Za-z0-9\_]+)\}{3}", self._prompt) 
+            new_prompt = self._prompt
+            for predicate_name in mustaches:
                 predicate_value = PredicateContainer.get_predicate_value(predicate_name)
-                print(f"Replacing mustache in prompt for predicate '{self.defined_predicate}': {{{{{predicate_name}}}}} -> {predicate_value}")
-                return self._prompt.replace(f"{{{{{predicate_name}}}}}", *predicate_value)
+                target_string = "{{{" + predicate_name + "}}}"
+                if isinstance(predicate_value, list):
+                    replacement_str = " and ".join("\'" + str(item) + "\'" for item in predicate_value)
+                else:
+                    replacement_str = str(predicate_value)
+                new_prompt = new_prompt.replace(target_string, replacement_str)
+            return new_prompt
+        
         return self._prompt
 
     @property
