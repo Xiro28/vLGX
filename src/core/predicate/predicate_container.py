@@ -1,3 +1,5 @@
+import re
+
 from src.core.predicate.condition_cache import ConditionCache
 
 class PredicateContainer:
@@ -18,15 +20,19 @@ class PredicateContainer:
         
     @staticmethod
     def get_predicate_value(predicate_head: str) -> list[str]:
-        print(f"Searching for predicate with head '{predicate_head}' in container...")
 
         values = []
+        # Use regex to find all matches non-greedily. 
+        # Example match: robot_command(5, insert) -> extracts "5, insert"
+        pattern = re.compile(rf"{re.escape(predicate_head)}\((.*?)\)")
+
         for pred in PredicateContainer._predicates:
-            if pred.startswith(predicate_head + "("):
-                print(f"Found predicate '{pred}' matching head '{predicate_head}'")
-                print(f"Extracting value from predicate: {pred}")
-                values.append(pred.split("(", 1)[1].rsplit(")", 1)[0]) # Extract the value inside the parentheses
-        return values if values else [""] # Return a list with an empty string if no values are found
+            matches = pattern.findall(pred)
+            for match in matches:
+                clean_match = match.strip()
+                values.append(clean_match)
+                
+        return values if values else [""]
     
     @staticmethod
     def get_all_values_for_predicate(predicate_head: str) -> str:

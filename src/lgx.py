@@ -46,7 +46,7 @@ class LGX:
         self.__total_extracted_pred += self.__extracted_preds
         return self
     
-    def infer_step(self, prompt:str, image_step_path:str) -> "LGX":
+    def infer_step(self, prompt:str, image_step_path:str | bytes) -> "LGX":
         self.__extracted_preds = self.evaluator.run_image(prompt, image_step_path)
         self.__total_extracted_pred += self.__extracted_preds
         return self

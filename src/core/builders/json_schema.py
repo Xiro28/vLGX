@@ -1,3 +1,5 @@
+import re
+
 from src.core.predicate.predicate_container import PredicateContainer
 from pydantic import BaseModel, Field
 from typing import List, Literal, Optional, Union, get_origin, get_args
@@ -5,11 +7,13 @@ import json
 
 class JSONSchemaBuilder:
 
-    def __init__(self):
-        self.__classes = []
+    PREDICATE_PARSED = {} # This will store the mapping of predicate names to their terms and indices for type hinting
 
-    def generate(self, predicate: str, enable_types: bool = False) -> type:
-        print(f"Generating class for predicate: {predicate}")
+    def __init__(self):
+        self.predicate_parsed = JSONSchemaBuilder.PREDICATE_PARSED
+
+    def generate(self, predicate: str, types: list) -> type:
+        #print(f"Generating class for predicate: {predicate}")
 
         data = predicate.split("(")
         class_name = data[0]
@@ -23,31 +27,81 @@ class JSONSchemaBuilder:
 
         class_dict = {}
         annotations = {}
+        
+        if types != None:
+            types = types.split(" ") if ' ' in types else [types]
+        else:
+            types = [None] * len(terms) # Create a list of None for type hints if no types provided
 
         # 2. Build Pydantic fields and annotations
         for i, term in enumerate(terms):
+            values = []
 
-            if "#" in term:
-                terms[i] = term.split("#")[1] # Update term to remove type hint for now
-                annotations[terms[i]] = Literal[*PredicateContainer.get_predicate_value(terms[i])]
+            type_hint = Union[int, str, None]
+
+            if types and i < len(types) and types[i] is not None:
+                if types[i].strip().lower() == "int":
+                    type_hint = int
+                elif types[i].strip().lower() == "str":
+                    type_hint = str
+
+                
+            if "[" in term and "]" in term:
+                terms[i] = term.split("[")[0]
+                values = term.split("[")[1].split("]")[0].split("|")
+                values = [v.strip() for v in values] # Clean up whitespace around values
+                annotations[terms[i]] = Literal[*values] if values else type_hint
                 class_dict[terms[i]] = Field(default=None) # Default None handles missing values
 
-                print(f"Term '{term}' has type hint. Using Literal with value from PredicateContainer: {annotations[terms[i]]}")
+            elif "$" in term:
+                terms[i] = term.split("$")[1] # Update term to remove type hint for now
+                if ":" in term:
+                    terms[i] = terms[i].split(":")[0] # Remove any additional type hints
+                    specific_variable_to_get = term.split(":")[1]
+                    
+                    if specific_variable_to_get in self.predicate_parsed[terms[i]]:
+                        target_index = self.predicate_parsed[terms[i]][specific_variable_to_get]
+                        
+                        for pred in PredicateContainer.get_predicate_value(terms[i]):
+                            # Skip entirely empty predicates
+                            if not pred or not pred.strip():
+                                continue
+                                
+                            pred_val = [v.strip() for v in pred.split(",")] # Added strip() to clean up whitespace
+                            
+
+                            print(f"{target_index} - {len(pred_val)} - {pred_val} - {pred}")
+                            # Protect against IndexError
+                            if target_index < len(pred_val):
+                                values.append(pred_val[target_index])
+                            else:
+                                print(f"Warning: Index {target_index} out of bounds for predicate '{pred}'")
+                else:
+                    values = PredicateContainer.get_predicate_value(terms[i])
+
+                annotations[terms[i]] = Literal[*values] if values else type_hint
+                class_dict[terms[i]] = Field(default=None) # Default None handles missing values
             else:
-                annotations[term] = Union[int, str, None]
+                annotations[term] = type_hint
                 class_dict[term] = Field(default=None) # Default None handles missing values
 
         # 3. Method to convert object to ASP fact string: predicate(val1, val2).
         def str_method(self):
-            values = [v for v in self.dict().values() if v is not None]
+            values = [re.sub(r'[^a-zA-Z0-9_]+', lambda m: '_' if '-' in m.group() or '_' in m.group() or m.group().isspace() else '', str(v)).strip('_') for v in self.dict().values() if v is not None]
             if not values and terms: # Avoid printing incomplete atoms
+                print("Warning: No values provided for terms, returning empty string to avoid incomplete atom.")
                 return ""
             args_str = ", ".join(str(v) for v in values)
-            return f"{class_name}({args_str}).".lower() if values else f"{class_name}.".lower()
+            asp_enc =  f"{class_name}({args_str}).".lower() if values else f"{class_name}.".lower()
+            return asp_enc
 
         class_dict['__annotations__'] = annotations
         class_dict['__name__'] = class_name
         class_dict['__str__'] = str_method
+
+        self.predicate_parsed[class_name] = {f"{term}":idx for idx, term in enumerate(class_dict.keys())}
+
+        #print(f"Generated class '{self.predicate_parsed}'")
         
         # Create the 'Atom' class (e.g., in_layer)
         new_class = type(class_name, (BaseModel,), class_dict)

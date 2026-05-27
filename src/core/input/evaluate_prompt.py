@@ -51,7 +51,7 @@ class EvaluatePrompt:
         return " ".join(re.findall(r"\w+(?:\([a-zA-Z0-9_]+(?:,\s*[a-zA-Z0-9_]+)*\))?\.", req))
     
 
-    def __structured_output_call(self, input_text: str, image_path: str = "") -> tuple: # type: ignore
+    def __structured_output_call(self, input_text: str, image_path: str | bytes) -> tuple: # type: ignore
         context = self.application_config.get("context", "")
 
         behaviour_context = ""
@@ -65,10 +65,10 @@ class EvaluatePrompt:
             if not predicate.has_to_be_extracted():
                 continue
 
-            appl_mapping = behaviour_mapping.replace("{instructions}", f"{predicate.prompt_description}")
+            appl_mapping = behaviour_mapping.replace("{instructions}", f"{predicate.prompt_description}\nRAG DATA:\n{predicate.rag_description}")
             appl_mapping = appl_mapping.replace("{atom}", predicate.predicate_formatted)
 
-            if image_path != "":
+            if image_path is not None:
                 yield self.__llm_instance.invoke_llm_constrained_image(appl_mapping, predicate.get_grammar(), behaviour_context, image_path), predicate
             else:
                 yield self.__llm_instance.invoke_llm_constrained(appl_mapping, predicate.get_grammar(), behaviour_context), predicate
@@ -94,7 +94,7 @@ class EvaluatePrompt:
 
         return PredicateContainer.get_all_predicates()
     
-    def __extract_image_predicates_multi_call_grammar(self, input_text: str, image_step_path:str) -> str:
+    def __extract_image_predicates_multi_call_grammar(self, input_text: str, image_step_path:str|bytes) -> str:
 
         for response, predicate in self.__structured_output_call(input_text, image_step_path):
 
@@ -119,7 +119,7 @@ class EvaluatePrompt:
         PredicateContainer.reset_container()
         return response
     
-    def run_image(self, input_text:str, image_path:str) -> None:
+    def run_image(self, input_text:str, image_path:str|bytes) -> None:
         response = self.__extract_image_predicates_multi_call_grammar(input_text, image_path)
         PredicateContainer.reset_container()
         return response

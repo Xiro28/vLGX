@@ -27,6 +27,9 @@ class Predicate:
         self.complex_condition = False
         self.has_set_condition = False
         self.condition_set = None
+        self.types = None
+
+        self.rag_text = ""
 
         if isinstance(config, str):
             logging.info("Simple predicate detected:", config)
@@ -37,6 +40,13 @@ class Predicate:
 
             self._prompt = config.get("prompt", "")
             self._kb = config.get("knowledge_base", "")
+
+            if config.get("rag", None) is not None:
+                with open(config["rag"], "r") as f:
+                    self.rag_text = f.read()
+
+            if config.get("types", None) is not None:
+                self.types = config["types"]
             
             cond = config.get("extraction_condition")
             if cond:
@@ -63,29 +73,29 @@ class Predicate:
 
     def __init__(self, predicate_definition, strings):
 
-        if "predicates" in predicate_definition:
-            self.is_predicate_group = True
-            self.predicate_group = predicate_definition["predicates"]   
-            self.defined_predicate = " ".join(self.predicate_group)
+        # if "predicates" in predicate_definition:
+        #     self.is_predicate_group = True
+        #     self.predicate_group = predicate_definition["predicates"]   
+        #     self.defined_predicate = " ".join(self.predicate_group)
 
-            self.has_predicate_link = False
+        #     self.has_predicate_link = False
 
-            self.grammar = JSONSchemaBuilder().generate_single_grammar(self.predicate_group)
-        else:
-            self.is_predicate_group = False
-            self.defined_predicate = next(iter(predicate_definition))
-            self.has_predicate_link = "#" in self.defined_predicate
-            predicate_definition = predicate_definition[self.defined_predicate]
+        #     self.grammar = JSONSchemaBuilder().generate_single_grammar(self.predicate_group)
+        # else:
+        self.is_predicate_group = False
+        self.defined_predicate = next(iter(predicate_definition))
+        self.has_predicate_link = "$" in self.defined_predicate
+        predicate_definition = predicate_definition[self.defined_predicate]
 
-            if self.has_predicate_link:
-                 logging.info("Predicate link detected for predicate. Grammar will be lazy updated before each LLM call", self.defined_predicate)
+        if self.has_predicate_link:
+                logging.info("Predicate link detected for predicate. Grammar will be lazy updated before each LLM call", self.defined_predicate)
 
-            self.grammar = JSONSchemaBuilder().generate(self.defined_predicate)
 
 
         self.advanced_prompt_type = "extraction_condition" in predicate_definition or "knowledge_base" in predicate_definition
 
         self.init_predicate(predicate_definition)
+        self.grammar = JSONSchemaBuilder().generate(self.defined_predicate, self.types)
 
         self.formatted_predicate = json.dumps(self.grammar.__info__)
         self.contains_mustache = "{{{" in self._prompt and "}}}" in self._prompt
@@ -195,7 +205,7 @@ class Predicate:
     
     def get_grammar(self) -> type:
         if self.has_predicate_link:
-            self.grammar = JSONSchemaBuilder().generate(self.defined_predicate)
+            self.grammar = JSONSchemaBuilder().generate(self.defined_predicate, self.types)
         return self.grammar
     
     def parse_response(self, response) -> list[str]:
@@ -226,6 +236,10 @@ class Predicate:
     @property
     def predicate_formatted(self):
         return str(self.formatted_predicate)
+    
+    @property
+    def rag_description(self):
+        return self.rag_text
     
     def __str__(self):
         return self.defined_predicate

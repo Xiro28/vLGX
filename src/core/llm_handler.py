@@ -73,8 +73,15 @@ class LLMHandler:
     def __to_llm_dict__(self, role: str, text: str) -> dict:
         return {"role": role, "content": text}
     
-    def __to__llm_dict_image__(self, role: str, text: str, image_path: str) -> dict:
-        with open(image_path, "rb") as f:
+    def __to__llm_dict_image__(self, role: str, text: str, image_input: str | bytes) -> dict:
+        if not os.path.exists(image_input): # Assuming image_path is a base64 string if the file does not exist
+            return {
+                "role": role,
+                "content": text,
+                "images": [image_input]  # base64 string, not a path
+            }
+
+        with open(image_input, "rb") as f:
             image_data = base64.b64encode(f.read()).decode("utf-8")
         return {
             "role": role,
@@ -124,7 +131,6 @@ class LLMHandler:
         _ret = self.__llm(
             model=self.llm_model,
             messages=_messages,
-            format = grammar,
             stream=False,
             options=configuration
         )
@@ -134,6 +140,7 @@ class LLMHandler:
         extraction_time = _ret["total_duration"]
 
         _ret = _ret["message"]["content"]
+
   
         try:
             self.cursor.execute('INSERT INTO prompt_cache (prompt, llm_model, configuration, response, token_in, token_out, extraction_time) VALUES (?, ?, ?, ?, ?, ?, ?)', (str(_messages), self.llm_model, str(configuration), _ret, token_in, token_out, extraction_time ))
@@ -150,7 +157,7 @@ class LLMHandler:
             logging.error("Errore durante l'inferenza", exc_info=True)
             return None
 
-    def invoke_llm_constrained_image(self, prompt: str, class_response: any, context: any, image_path: str) -> dict | str:
+    def invoke_llm_constrained_image(self, prompt: str, class_response: any, context: any, image_path: str|bytes) -> dict | str:
         configuration = {'temperature': 0, "top_p": 0.1}
         grammar = class_response
 
@@ -197,17 +204,19 @@ class LLMHandler:
             options=configuration
         )
 
-        # token_out = _ret["eval_count"]
-        # token_in = _ret["prompt_eval_count"]
-        # extraction_time = _ret["total_duration"]
+
+
+        token_out = _ret["eval_count"]
+        token_in = _ret["prompt_eval_count"]
+        extraction_time = _ret["total_duration"]
 
         _ret = _ret["message"]["content"]
 
-        print(_ret)
+        # print("LLM Response: ", _ret)
   
         try:
-            # self.cursor.execute('INSERT INTO prompt_cache (prompt, llm_model, configuration, response, token_in, token_out, extraction_time) VALUES (?, ?, ?, ?, ?, ?, ?)', (str(_messages), self.llm_model, str(configuration), _ret, token_in, token_out, extraction_time ))
-            # self.conn.commit()
+            self.cursor.execute('INSERT INTO prompt_cache (prompt, llm_model, configuration, response, token_in, token_out, extraction_time) VALUES (?, ?, ?, ?, ?, ?, ?)', (str(_messages), self.llm_model, str(configuration), _ret, token_in, token_out, extraction_time ))
+            self.conn.commit()
 
             # Statistics.log_llm_call(token_in, token_out)
             # Statistics.log_llm_call_duration(extraction_time)

@@ -119,3 +119,6 @@ venv.bak/
 .vscode/
 
 cached_prompt.db
+frontend/node_modules/.bin/
+
+frontend/node_modules/

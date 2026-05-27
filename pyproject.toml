@@ -19,6 +19,13 @@ pandas = "^2.3.3"
 plotly = "^6.5.2"
 matplotlib = "^3.10.8"
 tqdm = "^4.67.1"
+pdf2image = "^1.17.0"
+fitz = "^0.0.1.dev2"
+frontend = "^0.0.3"
+pypdfium2 = "^5.8.0"
+fastapi = "^0.136.1"
+uvicorn = {extras = ["standard"], version = "^0.47.0"}
+python-multipart = "^0.0.28"
 
 
 [build-system]
